@@ -24,7 +24,7 @@ message UpdateUserDto {
     SocialMedia socialMedia = 2;
 }
 message Users {
-    repeated User Users = 1;
+    repeated User users = 1;
 }
 
 message Empty {};
