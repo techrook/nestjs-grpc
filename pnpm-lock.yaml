@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.5.1
+        version: 2.5.1
       '@grpc/grpc-js':
         specifier: ^1.13.4
         version: 1.13.4
