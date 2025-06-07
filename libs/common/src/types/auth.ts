@@ -6,8 +6,9 @@
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
+import type { handleBidiStreamingCall, handleUnaryCall, UntypedServiceImplementation } from "@grpc/grpc-js";
+import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
 import { Observable } from "rxjs";
-import { map } from "rxjs/operators";
 
 export const protobufPackage = "auth";
 
@@ -51,6 +52,8 @@ export interface SocialMedia {
   twitterUri?: string | undefined;
   fbUri?: string | undefined;
 }
+
+export const AUTH_PACKAGE_NAME = "auth";
 
 function createBasePaginationDto(): PaginationDto {
   return { page: 0, skip: 0 };
@@ -96,34 +99,6 @@ export const PaginationDto: MessageFns<PaginationDto> = {
       }
       reader.skip(tag & 7);
     }
-    return message;
-  },
-
-  fromJSON(object: any): PaginationDto {
-    return {
-      page: isSet(object.page) ? globalThis.Number(object.page) : 0,
-      skip: isSet(object.skip) ? globalThis.Number(object.skip) : 0,
-    };
-  },
-
-  toJSON(message: PaginationDto): unknown {
-    const obj: any = {};
-    if (message.page !== 0) {
-      obj.page = Math.round(message.page);
-    }
-    if (message.skip !== 0) {
-      obj.skip = Math.round(message.skip);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<PaginationDto>, I>>(base?: I): PaginationDto {
-    return PaginationDto.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<PaginationDto>, I>>(object: I): PaginationDto {
-    const message = createBasePaginationDto();
-    message.page = object.page ?? 0;
-    message.skip = object.skip ?? 0;
     return message;
   },
 };
@@ -174,36 +149,6 @@ export const UpdateUserDto: MessageFns<UpdateUserDto> = {
     }
     return message;
   },
-
-  fromJSON(object: any): UpdateUserDto {
-    return {
-      id: isSet(object.id) ? globalThis.String(object.id) : "",
-      socialMedia: isSet(object.socialMedia) ? SocialMedia.fromJSON(object.socialMedia) : undefined,
-    };
-  },
-
-  toJSON(message: UpdateUserDto): unknown {
-    const obj: any = {};
-    if (message.id !== "") {
-      obj.id = message.id;
-    }
-    if (message.socialMedia !== undefined) {
-      obj.socialMedia = SocialMedia.toJSON(message.socialMedia);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<UpdateUserDto>, I>>(base?: I): UpdateUserDto {
-    return UpdateUserDto.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<UpdateUserDto>, I>>(object: I): UpdateUserDto {
-    const message = createBaseUpdateUserDto();
-    message.id = object.id ?? "";
-    message.socialMedia = (object.socialMedia !== undefined && object.socialMedia !== null)
-      ? SocialMedia.fromPartial(object.socialMedia)
-      : undefined;
-    return message;
-  },
 };
 
 function createBaseFindOneUserDto(): FindOneUserDto {
@@ -241,27 +186,6 @@ export const FindOneUserDto: MessageFns<FindOneUserDto> = {
     }
     return message;
   },
-
-  fromJSON(object: any): FindOneUserDto {
-    return { id: isSet(object.id) ? globalThis.String(object.id) : "" };
-  },
-
-  toJSON(message: FindOneUserDto): unknown {
-    const obj: any = {};
-    if (message.id !== "") {
-      obj.id = message.id;
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<FindOneUserDto>, I>>(base?: I): FindOneUserDto {
-    return FindOneUserDto.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<FindOneUserDto>, I>>(object: I): FindOneUserDto {
-    const message = createBaseFindOneUserDto();
-    message.id = object.id ?? "";
-    return message;
-  },
 };
 
 function createBaseEmpty(): Empty {
@@ -286,23 +210,6 @@ export const Empty: MessageFns<Empty> = {
       }
       reader.skip(tag & 7);
     }
-    return message;
-  },
-
-  fromJSON(_: any): Empty {
-    return {};
-  },
-
-  toJSON(_: Empty): unknown {
-    const obj: any = {};
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<Empty>, I>>(base?: I): Empty {
-    return Empty.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<Empty>, I>>(_: I): Empty {
-    const message = createBaseEmpty();
     return message;
   },
 };
@@ -340,27 +247,6 @@ export const Users: MessageFns<Users> = {
       }
       reader.skip(tag & 7);
     }
-    return message;
-  },
-
-  fromJSON(object: any): Users {
-    return { users: globalThis.Array.isArray(object?.users) ? object.users.map((e: any) => User.fromJSON(e)) : [] };
-  },
-
-  toJSON(message: Users): unknown {
-    const obj: any = {};
-    if (message.users?.length) {
-      obj.users = message.users.map((e) => User.toJSON(e));
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<Users>, I>>(base?: I): Users {
-    return Users.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<Users>, I>>(object: I): Users {
-    const message = createBaseUsers();
-    message.users = object.users?.map((e) => User.fromPartial(e)) || [];
     return message;
   },
 };
@@ -420,39 +306,6 @@ export const CreateUserDto: MessageFns<CreateUserDto> = {
       }
       reader.skip(tag & 7);
     }
-    return message;
-  },
-
-  fromJSON(object: any): CreateUserDto {
-    return {
-      username: isSet(object.username) ? globalThis.String(object.username) : "",
-      password: isSet(object.password) ? globalThis.String(object.password) : "",
-      age: isSet(object.age) ? globalThis.Number(object.age) : 0,
-    };
-  },
-
-  toJSON(message: CreateUserDto): unknown {
-    const obj: any = {};
-    if (message.username !== "") {
-      obj.username = message.username;
-    }
-    if (message.password !== "") {
-      obj.password = message.password;
-    }
-    if (message.age !== 0) {
-      obj.age = Math.round(message.age);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<CreateUserDto>, I>>(base?: I): CreateUserDto {
-    return CreateUserDto.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<CreateUserDto>, I>>(object: I): CreateUserDto {
-    const message = createBaseCreateUserDto();
-    message.username = object.username ?? "";
-    message.password = object.password ?? "";
-    message.age = object.age ?? 0;
     return message;
   },
 };
@@ -547,60 +400,10 @@ export const User: MessageFns<User> = {
     }
     return message;
   },
-
-  fromJSON(object: any): User {
-    return {
-      id: isSet(object.id) ? globalThis.String(object.id) : "",
-      username: isSet(object.username) ? globalThis.String(object.username) : "",
-      password: isSet(object.password) ? globalThis.String(object.password) : "",
-      age: isSet(object.age) ? globalThis.Number(object.age) : 0,
-      subscribed: isSet(object.subscribed) ? globalThis.Boolean(object.subscribed) : false,
-      socialMedia: isSet(object.socialMedia) ? SocialMedia.fromJSON(object.socialMedia) : undefined,
-    };
-  },
-
-  toJSON(message: User): unknown {
-    const obj: any = {};
-    if (message.id !== "") {
-      obj.id = message.id;
-    }
-    if (message.username !== "") {
-      obj.username = message.username;
-    }
-    if (message.password !== "") {
-      obj.password = message.password;
-    }
-    if (message.age !== 0) {
-      obj.age = Math.round(message.age);
-    }
-    if (message.subscribed !== false) {
-      obj.subscribed = message.subscribed;
-    }
-    if (message.socialMedia !== undefined) {
-      obj.socialMedia = SocialMedia.toJSON(message.socialMedia);
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<User>, I>>(base?: I): User {
-    return User.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<User>, I>>(object: I): User {
-    const message = createBaseUser();
-    message.id = object.id ?? "";
-    message.username = object.username ?? "";
-    message.password = object.password ?? "";
-    message.age = object.age ?? 0;
-    message.subscribed = object.subscribed ?? false;
-    message.socialMedia = (object.socialMedia !== undefined && object.socialMedia !== null)
-      ? SocialMedia.fromPartial(object.socialMedia)
-      : undefined;
-    return message;
-  },
 };
 
 function createBaseSocialMedia(): SocialMedia {
-  return { twitterUri: undefined, fbUri: undefined };
+  return {};
 }
 
 export const SocialMedia: MessageFns<SocialMedia> = {
@@ -645,124 +448,121 @@ export const SocialMedia: MessageFns<SocialMedia> = {
     }
     return message;
   },
-
-  fromJSON(object: any): SocialMedia {
-    return {
-      twitterUri: isSet(object.twitterUri) ? globalThis.String(object.twitterUri) : undefined,
-      fbUri: isSet(object.fbUri) ? globalThis.String(object.fbUri) : undefined,
-    };
-  },
-
-  toJSON(message: SocialMedia): unknown {
-    const obj: any = {};
-    if (message.twitterUri !== undefined) {
-      obj.twitterUri = message.twitterUri;
-    }
-    if (message.fbUri !== undefined) {
-      obj.fbUri = message.fbUri;
-    }
-    return obj;
-  },
-
-  create<I extends Exact<DeepPartial<SocialMedia>, I>>(base?: I): SocialMedia {
-    return SocialMedia.fromPartial(base ?? ({} as any));
-  },
-  fromPartial<I extends Exact<DeepPartial<SocialMedia>, I>>(object: I): SocialMedia {
-    const message = createBaseSocialMedia();
-    message.twitterUri = object.twitterUri ?? undefined;
-    message.fbUri = object.fbUri ?? undefined;
-    return message;
-  },
 };
 
-export interface UsersService {
-  CreateUser(request: CreateUserDto): Promise<User>;
-  FindAllUsers(request: Empty): Promise<Users>;
-  FindOneUser(request: FindOneUserDto): Promise<User>;
-  UpdateUser(request: UpdateUserDto): Promise<User>;
-  RemoveUser(request: FindOneUserDto): Promise<User>;
-  QueryUsers(request: Observable<PaginationDto>): Observable<Users>;
+export interface UsersServiceClient {
+  createUser(request: CreateUserDto): Observable<User>;
+
+  findAllUsers(request: Empty): Observable<Users>;
+
+  findOneUser(request: FindOneUserDto): Observable<User>;
+
+  updateUser(request: UpdateUserDto): Observable<User>;
+
+  removeUser(request: FindOneUserDto): Observable<User>;
+
+  queryUsers(request: Observable<PaginationDto>): Observable<Users>;
 }
 
-export const UsersServiceServiceName = "auth.UsersService";
-export class UsersServiceClientImpl implements UsersService {
-  private readonly rpc: Rpc;
-  private readonly service: string;
-  constructor(rpc: Rpc, opts?: { service?: string }) {
-    this.service = opts?.service || UsersServiceServiceName;
-    this.rpc = rpc;
-    this.CreateUser = this.CreateUser.bind(this);
-    this.FindAllUsers = this.FindAllUsers.bind(this);
-    this.FindOneUser = this.FindOneUser.bind(this);
-    this.UpdateUser = this.UpdateUser.bind(this);
-    this.RemoveUser = this.RemoveUser.bind(this);
-    this.QueryUsers = this.QueryUsers.bind(this);
-  }
-  CreateUser(request: CreateUserDto): Promise<User> {
-    const data = CreateUserDto.encode(request).finish();
-    const promise = this.rpc.request(this.service, "CreateUser", data);
-    return promise.then((data) => User.decode(new BinaryReader(data)));
-  }
+export interface UsersServiceController {
+  createUser(request: CreateUserDto): Promise<User> | Observable<User> | User;
 
-  FindAllUsers(request: Empty): Promise<Users> {
-    const data = Empty.encode(request).finish();
-    const promise = this.rpc.request(this.service, "FindAllUsers", data);
-    return promise.then((data) => Users.decode(new BinaryReader(data)));
-  }
+  findAllUsers(request: Empty): Promise<Users> | Observable<Users> | Users;
 
-  FindOneUser(request: FindOneUserDto): Promise<User> {
-    const data = FindOneUserDto.encode(request).finish();
-    const promise = this.rpc.request(this.service, "FindOneUser", data);
-    return promise.then((data) => User.decode(new BinaryReader(data)));
-  }
+  findOneUser(request: FindOneUserDto): Promise<User> | Observable<User> | User;
 
-  UpdateUser(request: UpdateUserDto): Promise<User> {
-    const data = UpdateUserDto.encode(request).finish();
-    const promise = this.rpc.request(this.service, "UpdateUser", data);
-    return promise.then((data) => User.decode(new BinaryReader(data)));
-  }
+  updateUser(request: UpdateUserDto): Promise<User> | Observable<User> | User;
 
-  RemoveUser(request: FindOneUserDto): Promise<User> {
-    const data = FindOneUserDto.encode(request).finish();
-    const promise = this.rpc.request(this.service, "RemoveUser", data);
-    return promise.then((data) => User.decode(new BinaryReader(data)));
-  }
+  removeUser(request: FindOneUserDto): Promise<User> | Observable<User> | User;
 
-  QueryUsers(request: Observable<PaginationDto>): Observable<Users> {
-    const data = request.pipe(map((request) => PaginationDto.encode(request).finish()));
-    const result = this.rpc.bidirectionalStreamingRequest(this.service, "QueryUsers", data);
-    return result.pipe(map((data) => Users.decode(new BinaryReader(data))));
-  }
+  queryUsers(request: Observable<PaginationDto>): Observable<Users>;
 }
 
-interface Rpc {
-  request(service: string, method: string, data: Uint8Array): Promise<Uint8Array>;
-  clientStreamingRequest(service: string, method: string, data: Observable<Uint8Array>): Promise<Uint8Array>;
-  serverStreamingRequest(service: string, method: string, data: Uint8Array): Observable<Uint8Array>;
-  bidirectionalStreamingRequest(service: string, method: string, data: Observable<Uint8Array>): Observable<Uint8Array>;
+export function UsersServiceControllerMethods() {
+  return function (constructor: Function) {
+    const grpcMethods: string[] = ["createUser", "findAllUsers", "findOneUser", "updateUser", "removeUser"];
+    for (const method of grpcMethods) {
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
+      GrpcMethod("UsersService", method)(constructor.prototype[method], method, descriptor);
+    }
+    const grpcStreamMethods: string[] = ["queryUsers"];
+    for (const method of grpcStreamMethods) {
+      const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
+      GrpcStreamMethod("UsersService", method)(constructor.prototype[method], method, descriptor);
+    }
+  };
 }
 
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
+export const USERS_SERVICE_NAME = "UsersService";
 
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
+export type UsersServiceService = typeof UsersServiceService;
+export const UsersServiceService = {
+  createUser: {
+    path: "/auth.UsersService/CreateUser",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: CreateUserDto) => Buffer.from(CreateUserDto.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => CreateUserDto.decode(value),
+    responseSerialize: (value: User) => Buffer.from(User.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => User.decode(value),
+  },
+  findAllUsers: {
+    path: "/auth.UsersService/FindAllUsers",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: Empty) => Buffer.from(Empty.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => Empty.decode(value),
+    responseSerialize: (value: Users) => Buffer.from(Users.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Users.decode(value),
+  },
+  findOneUser: {
+    path: "/auth.UsersService/FindOneUser",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FindOneUserDto) => Buffer.from(FindOneUserDto.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FindOneUserDto.decode(value),
+    responseSerialize: (value: User) => Buffer.from(User.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => User.decode(value),
+  },
+  updateUser: {
+    path: "/auth.UsersService/UpdateUser",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: UpdateUserDto) => Buffer.from(UpdateUserDto.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => UpdateUserDto.decode(value),
+    responseSerialize: (value: User) => Buffer.from(User.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => User.decode(value),
+  },
+  removeUser: {
+    path: "/auth.UsersService/RemoveUser",
+    requestStream: false,
+    responseStream: false,
+    requestSerialize: (value: FindOneUserDto) => Buffer.from(FindOneUserDto.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => FindOneUserDto.decode(value),
+    responseSerialize: (value: User) => Buffer.from(User.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => User.decode(value),
+  },
+  queryUsers: {
+    path: "/auth.UsersService/QueryUsers",
+    requestStream: true,
+    responseStream: true,
+    requestSerialize: (value: PaginationDto) => Buffer.from(PaginationDto.encode(value).finish()),
+    requestDeserialize: (value: Buffer) => PaginationDto.decode(value),
+    responseSerialize: (value: Users) => Buffer.from(Users.encode(value).finish()),
+    responseDeserialize: (value: Buffer) => Users.decode(value),
+  },
+} as const;
 
-type KeysOfUnion<T> = T extends T ? keyof T : never;
-export type Exact<P, I extends P> = P extends Builtin ? P
-  : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
-
-function isSet(value: any): boolean {
-  return value !== null && value !== undefined;
+export interface UsersServiceServer extends UntypedServiceImplementation {
+  createUser: handleUnaryCall<CreateUserDto, User>;
+  findAllUsers: handleUnaryCall<Empty, Users>;
+  findOneUser: handleUnaryCall<FindOneUserDto, User>;
+  updateUser: handleUnaryCall<UpdateUserDto, User>;
+  removeUser: handleUnaryCall<FindOneUserDto, User>;
+  queryUsers: handleBidiStreamingCall<PaginationDto, Users>;
 }
 
 export interface MessageFns<T> {
   encode(message: T, writer?: BinaryWriter): BinaryWriter;
   decode(input: BinaryReader | Uint8Array, length?: number): T;
-  fromJSON(object: any): T;
-  toJSON(message: T): unknown;
-  create<I extends Exact<DeepPartial<T>, I>>(base?: I): T;
-  fromPartial<I extends Exact<DeepPartial<T>, I>>(object: I): T;
 }
