@@ -14,10 +14,10 @@ export class UsersService implements OnModuleInit {
   private readonly users: User[] = [];
 
   onModuleInit() {
-    for (let i = 0; 0 <= 40; i++) {
+    for (let i = 0; i <= 40; i++) {
       this.create({ username: randomUUID(), password: randomUUID(), age: i });
     }
-  }
+  }  
   create(createUserDto: CreateUserDto): User {
     const user: User = {
       ...createUserDto,
